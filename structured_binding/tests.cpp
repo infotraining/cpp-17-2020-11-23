@@ -257,10 +257,10 @@ decltype(auto) get<1>(const Something& sth)
  
 TEST_CASE("user type & tuple like protocol")
 {
-    Something sth = other;
+    const Something sth = other;
 
     const auto [value, description] = sth;
 
     REQUIRE(value == 3);
-    REQUIRE(description == "some"sv);
+    REQUIRE(description == "other"sv);
 }
