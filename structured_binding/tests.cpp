@@ -1,3 +1,4 @@
+#include "catch.hpp"
 #include <algorithm>
 #include <iostream>
 #include <list>
@@ -6,31 +7,173 @@
 #include <string>
 #include <tuple>
 #include <vector>
-
-#include "catch.hpp"
+#include <set>
+#include <array>
+#include <string_view>
+#include <thread>
 
 using namespace std;
+using namespace std::literals;
 
-tuple<int, int, double> calc_stats(const vector<int>& data)
+namespace BeforeCpp17
 {
-    vector<int>::const_iterator min, max;
-    tie(min, max) = minmax_element(data.begin(), data.end());
+    tuple<int, int, double> calc_stats(const vector<int>& data)
+    {
+        vector<int>::const_iterator min_pos, max_pos;
+        tie(min_pos, max_pos) = minmax_element(data.begin(), data.end());
 
-    double avg = accumulate(data.begin(), data.end(), 0.0) / data.size();
+        double avg = accumulate(data.begin(), data.end(), 0.0) / data.size();
 
-    return make_tuple(*min, *max, avg);
+        return make_tuple(*min_pos, *max_pos, avg);
+    }
+}
+
+template <typename TContainer>
+tuple<int, int, double> calc_stats(const TContainer& data)
+{
+    auto [min_pos, max_pos] = minmax_element(std::begin(data), std::end(data));
+
+    double avg = accumulate(std::begin(data), std::end(data), 0.0) / std::size(data);
+
+    return tuple(*min_pos, *max_pos, avg);
 }
 
 TEST_CASE("Before C++17")
 {
     vector<int> data = {4, 42, 665, 1, 123, 13};
 
-    int min, max;
-    double avg;
+    SECTION("reading tuple using get")
+    {
+        auto results = calc_stats(data);
 
-    tie(min, max, avg) = calc_stats(data);
+        REQUIRE(std::get<0>(results) == 1); // min
+        REQUIRE(std::get<1>(results) == 665); // max
+    }
 
-    REQUIRE(min == 1);
-    REQUIRE(max == 665);
-    REQUIRE(avg == Approx(141.333));
+    SECTION("reading using std::tie")
+    {
+        int min, max;
+        double avg;
+
+        tie(min, max, avg) = calc_stats(data);
+
+        REQUIRE(min == 1);
+        REQUIRE(max == 665);
+        REQUIRE(avg == Approx(141.333));
+    }
+
+    SECTION("using structured bindings")
+    {
+        const auto [min, max, avg] = calc_stats(data);
+
+        REQUIRE(min == 1);
+        REQUIRE(max == 665);
+        REQUIRE(avg == Approx(141.333));
+    }
+
+    SECTION("calc_stats & native array")
+    {
+        int dataset[] = {5, 23, 665, 42, 0, 434};
+
+        const auto [min, max, avg] = calc_stats(dataset);
+
+        REQUIRE(min == 0);
+        REQUIRE(max == 665);
+    }
+}
+
+struct ErrorCode
+{
+    const int errc;
+    const char* m;
+};
+
+ErrorCode open_file(const char* filename)
+{
+    return ErrorCode{13, "Error#13"};
+}
+
+TEST_CASE("Structured bindings - details")
+{
+    SECTION("native arrays")
+    {
+        int coord[4] = {1, 2, 3, 4};
+
+        auto [x, y, z, t] = coord;
+
+        REQUIRE(x == 1);
+    }
+
+    SECTION("std arrays")
+    {
+        std::array coord = {1, 2, 3, 4};
+
+        alignas(128) auto [x, y, z, t] = coord;
+
+        REQUIRE(x == 1);
+    }
+
+    SECTION("std::pair")
+    {
+        std::set<int> numbers;
+
+        auto [pos, was_inserted] = numbers.insert(6);
+        REQUIRE(*(pos) == 6);
+        REQUIRE(was_inserted == true);
+    }
+
+    SECTION("struct")
+    {
+        auto [error_code, message] = open_file("data.dat");
+        REQUIRE(error_code == 13);
+        REQUIRE(message == "Error#13"s);
+    }
+}
+
+struct Timestamp 
+{
+    int h, m, s;
+};
+
+TEST_CASE("structured bindings - how it works")
+{
+    Timestamp t1{11, 45, 0};
+
+    const auto& [hour, min, seconds] = t1;
+
+    SECTION("works like this")
+    {
+        const auto& entity = t1; 
+
+        auto& hour = entity.h;
+        auto& min = entity.m;
+        auto& seconds = entity.s;
+    }
+}
+
+struct Data
+{
+    int d1;
+    char c;
+    int d2;
+};
+
+TEST_CASE("alignas")
+{
+    int counter1 = 0;
+    char c; 
+    // padding
+    alignas(std::hardware_destructive_interference_size) int counter2 = 0;
+}
+
+TEST_CASE("stringlike literals")
+{
+    using namespace std::literals;
+
+    auto text1 = "text";  // const char* 
+    auto text2 = "text"s; // std::string - C++14
+    auto text3 = "text"sv; // std::string_view - C++17
+
+    REQUIRE(text1 == text2);
+    REQUIRE(text1 == text3);
 }
