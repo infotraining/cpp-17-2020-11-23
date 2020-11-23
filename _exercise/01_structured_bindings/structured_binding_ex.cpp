@@ -8,13 +8,45 @@ using namespace std;
 
 enum class Bitfields : uint32_t
 {
+    value
 };
+
+////////////////////////////////////////////
+// tuple like protocol - Structured Bindings
+
+// step 1
+template <>
+struct std::tuple_size<Bitfields>
+{
+    static constexpr size_t value = 4;
+};
+
+// step 2
+template <size_t Index>
+struct std::tuple_element<Index, Bitfields>
+{
+    using type = uint8_t;
+};
+
+// step 3
+template <size_t Index>
+decltype(auto) get(const Bitfields& sth)
+{
+    return (static_cast<uint32_t>(sth) >> ((3 - Index) * 8) & 0xFF);
+}
+
+// template <>
+// decltype(auto) get<2>(const Bitfields& sth)
+// {
+//     return (static_cast<uint32_t>(sth) >> 8) & 0xFF;
+// }
+ 
 
 TEST_CASE("split integer to bytes")
 {
     Bitfields value{0b00000001'11100010'00000100'01001000};
 
-    auto [b1, b2, b3, b4] = value;
+    const auto [b1, b2, b3, b4] = value;
 
     CHECK(b1 == 0b00000001);
     CHECK(b2 == 0b11100010);
