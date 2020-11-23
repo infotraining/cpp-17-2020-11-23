@@ -1,16 +1,16 @@
 #include "catch.hpp"
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <list>
 #include <map>
+#include <new>
 #include <numeric>
+#include <set>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
-#include <set>
-#include <array>
-#include <string_view>
-#include <thread>
 
 using namespace std;
 using namespace std::literals;
@@ -90,7 +90,7 @@ struct ErrorCode
 
 ErrorCode open_file(const char* filename)
 {
-    return ErrorCode{13, "Error#13"};
+    return ErrorCode {13, "Error#13"};
 }
 
 TEST_CASE("Structured bindings - details")
@@ -130,20 +130,20 @@ TEST_CASE("Structured bindings - details")
     }
 }
 
-struct Timestamp 
+struct Timestamp
 {
     int h, m, s;
 };
 
 TEST_CASE("structured bindings - how it works")
 {
-    Timestamp t1{11, 45, 0};
+    Timestamp t1 {11, 45, 0};
 
     const auto& [hour, min, seconds] = t1;
 
     SECTION("works like this")
     {
-        const auto& entity = t1; 
+        const auto& entity = t1;
 
         auto& hour = entity.h;
         auto& min = entity.m;
@@ -161,7 +161,7 @@ struct Data
 TEST_CASE("alignas")
 {
     int counter1 = 0;
-    char c; 
+    char c;
     // padding
     alignas(std::hardware_destructive_interference_size) int counter2 = 0;
 }
@@ -170,10 +170,97 @@ TEST_CASE("stringlike literals")
 {
     using namespace std::literals;
 
-    auto text1 = "text";  // const char* 
+    auto text1 = "text"; // const char*
     auto text2 = "text"s; // std::string - C++14
     auto text3 = "text"sv; // std::string_view - C++17
 
     REQUIRE(text1 == text2);
     REQUIRE(text1 == text3);
+}
+
+TEST_CASE("structured bindings - use cases")
+{
+    std::map<int, std::string> dict = {{1, "one"}, {2, "two"}, {3, "three"}};
+
+    SECTION("iteration over maps")
+    {    
+        for(const auto& [key, value] : dict)
+        {
+            std::cout << key << ": " << value << "\n";
+        }
+    }
+
+    SECTION("insert into associative containers")
+    {
+        auto [pos, was_inserted] = dict.insert(pair(1, "one"));
+        
+        REQUIRE(pos->second == "one"s);
+        REQUIRE(was_inserted == false);
+    }
+
+    SECTION("init many vars")
+    {
+        list lst = {1, 2, 3};
+
+        for(auto [index, pos] = tuple(0, begin(lst)); pos != end(lst); ++pos, ++index)
+        {
+            std::cout << index << " - " << *pos << "\n";
+        }
+    }
+}
+
+////////////////////////////////////////////
+// tuple like protocol - Structured Bindings
+
+enum Something
+{
+    some = 1, thing, other
+};
+
+const std::map<Something, std::string_view> something_desc = {{some, "some"sv}, {thing, "thing"sv}, {other, "other"sv}};
+
+// step 1
+template <>
+struct std::tuple_size<Something>
+{
+    static constexpr size_t value = 2;
+};
+
+// step 2
+template <>
+struct std::tuple_element<0, Something>
+{
+    using type = int;
+};
+
+template <>
+struct std::tuple_element<1, Something>
+{
+    using type = std::string_view;
+};
+
+// step 3
+template <size_t Index>
+decltype(auto) get(const Something&);
+
+template <>
+decltype(auto) get<0>(const Something& sth)
+{
+    return static_cast<int>(sth);
+}
+
+template <>
+decltype(auto) get<1>(const Something& sth)
+{
+    return something_desc.at(sth);
+}
+ 
+TEST_CASE("user type & tuple like protocol")
+{
+    Something sth = other;
+
+    const auto [value, description] = sth;
+
+    REQUIRE(value == 3);
+    REQUIRE(description == "some"sv);
 }
