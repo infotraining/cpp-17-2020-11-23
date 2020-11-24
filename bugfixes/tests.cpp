@@ -143,3 +143,55 @@ TEST_CASE("noexcept")
     Base* ptr = &d;
     ptr->foo();
 }
+
+std::vector<int> create_vector_rvo(size_t n) // since C++17 rvo is mandatory
+{
+    return vector<int>(n, -1); // prvalue
+}
+
+std::vector<int> create_vector_nrvo(size_t n)
+{
+    vector<int> vec(n);
+    std::iota(begin(vec), end(vec), 0);
+    
+    return vec; // lvalue
+}
+
+struct CopyMoveDisabled
+{
+    vector<int> data;
+
+    CopyMoveDisabled(std::initializer_list<int> lst)
+        : data {lst}
+    {
+    }
+
+    CopyMoveDisabled(const CopyMoveDisabled&) = delete;
+    CopyMoveDisabled& operator=(const CopyMoveDisabled&) = delete;
+    CopyMoveDisabled(CopyMoveDisabled&&) = delete;
+    CopyMoveDisabled& operator=(CopyMoveDisabled&&) = delete;
+    ~CopyMoveDisabled() = default;
+};
+
+CopyMoveDisabled create_impossible()
+{
+    return CopyMoveDisabled{1, 2, 3}; // prvalue
+}
+
+void use(CopyMoveDisabled arg)
+{
+    cout << "Using object: " << arg.data.size() << "\n";
+}
+
+TEST_CASE("RVO")
+{
+    std::vector<int> result = create_vector_rvo(1'000'000);
+    REQUIRE(result.size() == 1'000'000);
+
+    //CopyMoveDisabled backup = cmd;
+    //CopyMoveDisabled target = std::move(cmd);
+    
+    CopyMoveDisabled cmd = create_impossible();
+    use(CopyMoveDisabled{1, 2, 3, 4, 5});
+    use(create_impossible());    
+}
