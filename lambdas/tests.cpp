@@ -121,6 +121,5 @@ TEST_CASE("constexpr lambda expression")
     print("data", data);
 
     auto constexpr lgt_5000 = *Cpp20::find_if(data.begin(), data.end(), [](int x) { return x > 5'000; });
-
     static_assert(lgt_5000 == 5041);
 }
