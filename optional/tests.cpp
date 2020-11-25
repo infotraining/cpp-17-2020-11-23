@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <charconv>
 
 #include "catch.hpp"
 
@@ -93,7 +94,7 @@ TEST_CASE("strange cases")
 
     SECTION("optional<int*>")
     {
-        optional<int*> op{nullptr};
+        optional<int*> op {nullptr};
 
         if (op)
         {
@@ -106,13 +107,54 @@ TEST_CASE("strange cases")
 
 // TODO
 
+namespace Exercise
+{
+    namespace Ver1
+    {
+        bool is_digit(string_view name)
+        {
+            return name.find_first_not_of("0123456789") == std::string::npos;
+        }
+
+        std::optional<int> to_int(string_view val)
+        {
+            if (is_digit(val))
+            {
+                return std::optional<int> {std::stoi(std::string(val))};
+            }
+            return nullopt;
+        }
+    }
+
+    inline namespace Ver2
+    {
+        optional<int> to_int(string_view str)
+        {
+            int result {};
+
+            auto start = str.data();
+            auto end = start + str.size();
+
+            if (const auto& [pos, error_code] = from_chars(start, end, result); 
+                    error_code != std::errc {} || pos != end)
+            {
+                return nullopt;
+            }
+
+            return result;
+        }
+    }
+}
+
 TEST_CASE("to_int")
 {
-    optional n = to_int("42");
+    using namespace Exercise;
+
+    optional<int> n = to_int("42");
 
     REQUIRE(n.has_value());
     REQUIRE(*n == 42);
 
-    optional ne = to_int("4b");
-    REQUIRE(n.has_value() == false);
+    optional<int> bad = to_int("4bzx"s);
+    REQUIRE(bad.has_value() == false);
 }
