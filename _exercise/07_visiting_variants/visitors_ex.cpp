@@ -41,6 +41,7 @@ TEST_CASE("visit a shape variant and calculate area")
     vector<Shape> shapes = {Circle{1}, Square{10}, Rectangle{10, 1}};
 
     double total_area {};
+    
     for(const auto& s : shapes)
     {
         total_area += std::visit(overload {
