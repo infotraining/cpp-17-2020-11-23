@@ -295,7 +295,8 @@ struct Array
 
 // deduction guide
 template <typename Head, typename... Tail>
-Array(Head, Tail...) -> Array<enable_if_t<(is_same_v<Head, Tail> && ...), Head>, sizeof...(Tail) + 1>;
+Array(Head, Tail...) 
+    -> Array<enable_if_t<(is_same_v<Head, Tail> && ...), Head>, sizeof...(Tail) + 1>;
 
 TEST_CASE("Array")
 {
